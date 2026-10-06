@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonprinter</title>
+<style>
+  :root {
+    --ink: #1c1917;
+    --paper: #f6f1e7;
+    --card: #fffdf8;
+    --line: #e7dfd0;
+    --accent: #c4512c;
+    --accent-dark: #9a3b1d;
+    --ok: #2f6b4f;
+    --muted: #78716c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(900px 400px at 10% -10%, #f3d7c4 0%, transparent 55%),
+      radial-gradient(700px 400px at 100% 0%, #efe4cc 0%, transparent 50%),
+      var(--paper);
+    color: var(--ink);
+  }
+  header {
+    padding: 28px 22px 8px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.03em; }
+  header p { margin: 6px 0 0; color: var(--muted); }
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 18px 22px 48px;
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 18px;
+  }
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+  }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(80, 50, 20, 0.05);
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: inherit;
+    color: inherit;
+  }
+  input:focus { outline: 2px solid #e8b39a; border-color: var(--accent); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .tasks { display: flex; flex-direction: column; gap: 8px; }
+  .task {
+    display: grid;
+    grid-template-columns: 28px 1.4fr 1fr 36px;
+    gap: 8px;
+    align-items: center;
+  }
+  .num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  button { border: 0; border-radius: 10px; font: inherit; cursor: pointer; }
+  .ghost { background: #f3eee4; color: var(--ink); padding: 10px 12px; }
+  .danger { background: #f6e8e2; color: var(--accent-dark); height: 40px; }
+  .print {
+    background: var(--accent);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 650;
+    width: 100%;
+  }
+  .print:hover { background: var(--accent-dark); }
+  .print:disabled { opacity: 0.6; cursor: wait; }
+  .bar { display: flex; gap: 8px; margin-top: 12px; }
+  .status { min-height: 22px; margin-top: 10px; font-size: 14px; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--accent-dark); }
+  .slip {
+    background: #fff;
+    border-radius: 4px 4px 12px 12px;
+    padding: 18px 16px 22px;
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    box-shadow: 0 8px 0 #efe8da, 0 14px 24px rgba(0,0,0,.06);
+    min-height: 280px;
+  }
+  .slip h2 { text-align: center; margin: 0 0 4px; font-size: 18px; letter-spacing: .08em; }
+  .sub { text-align: center; color: var(--muted); margin-bottom: 10px; }
+  .rule { border-top: 1px dashed #d6d3d1; margin: 6px 0; }
+  .who { font-weight: 700; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bonprinter</h1>
+  <p>Typ een lijst en stuur hem naar de Epson TM-T20II.</p>
+</header>
+<main>
+  <section>
+    <div class="row">
+      <div>
+        <label for="title">Titel</label>
+        <input id="title" value="TO-DO" maxlength="24">
+      </div>
+      <div>
+        <label for="sub">Ondertitel</label>
+        <input id="sub" value="vanavond" maxlength="32">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="ip">Printer-IP</label>
+        <input id="ip" value="192.168.1.212">
+      </div>
+      <div>
+        <label for="logo">Logo uit printer (0 = uit)</label>
+        <input id="logo" type="number" min="0" max="255" value="1">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="footer">Onderaan</label>
+        <input id="footer" value="Klaar is klaar" maxlength="40">
+      </div>
+    </div>
+    <label>Taken</label>
+    <div class="tasks" id="tasks"></div>
+    <div class="bar">
+      <button class="ghost" type="button" id="add">+ taak</button>
+      <button class="print" type="button" id="print">Printen</button>
+    </div>
+    <div class="status" id="status"></div>
+    <p class="note">De pagina draait op deze computer en stuurt de bon rechtstreeks naar poort 9100.</p>
+  </section>
+  <section>
+    <div class="slip" id="preview"></div>
+  </section>
+</main>
+<script>
+const tasksEl = document.getElementById("tasks");
+const preview = document.getElementById("preview");
+const statusEl = document.getElementById("status");
+const start = [
+  ["Tafel dekken", "Kyra en Kaylan"],
+  ["Eten koken", "Mama"],
+  ["Drinken pakken", "Vayèn"],
+  ["Muziekje op zetten", "Papa"],
+  ["Tafel afruimen", "Iedereen"],
+  ["Volleybal", "Kyra"],
+  ["Accu pakket aansluiten", "Papa"],
+  ["Tas inpakken", "Vayèn"],
+  ["Brood voor morgen", "Mama en Vayèn"]
+];
+
+function row(task, who) {
+  const div = document.createElement("div");
+  div.className = "task";
+  const num = document.createElement("span");
+  num.className = "num";
+  const taskIn = document.createElement("input");
+  taskIn.className = "task-in";
+  taskIn.placeholder = "Taak";
+  taskIn.value = task;
+  const whoIn = document.createElement("input");
+  whoIn.className = "who-in";
+  whoIn.placeholder = "Wie";
+  whoIn.value = who;
+  const del = document.createElement("button");
+  del.className = "danger";
+  del.type = "button";
+  del.textContent = "x";
+  del.title = "Weg";
+  del.onclick = () => { div.remove(); renumber(); draw(); };
+  taskIn.addEventListener("input", draw);
+  whoIn.addEventListener("input", draw);
+  div.append(num, taskIn, whoIn, del);
+  tasksEl.appendChild(div);
+  renumber();
+}
+function renumber() {
+  Array.from(tasksEl.querySelectorAll(".num")).forEach((n, i) => {
+    n.textContent = (i + 1) + ".";
+  });
+}
+function items() {
+  return Array.from(tasksEl.querySelectorAll(".task")).map(div => ({
+    task: div.querySelector(".task-in").value.trim(),
+    who: div.querySelector(".who-in").value.trim()
+  })).filter(x => x.task || x.who);
+}
+function esc(s) {
+  return String(s)
+    .replace(/\u0026/g, "\u0026amp;")
+    .replace(/</g, "\u0026lt;");
+}
+function draw() {
+  const title = document.getElementById("title").value.trim() || "LIJST";
+  const sub = document.getElementById("sub").value.trim();
+  const foot = document.getElementById("footer").value.trim();
+  const logo = Number(document.getElementById("logo").value || 0);
+  const list = items();
+  let html = "";
+  if (logo > 0) html += '<div class="sub">[ logo ' + logo + " ]</div>";
+  html += "<h2>" + esc(title) + "</h2>";
+  if (sub) html += '<div class="sub">' + esc(sub) + "</div>";
+  list.forEach((it, i) => {
+    html += '<div class="rule"></div><div>' + (i + 1) + ". " + esc(it.task) + "</div>";
+    if (it.who) html += '<div class="who">   -> ' + esc(it.who) + "</div>";
+  });
+  html += '<div class="rule"></div>';
+  if (foot) html += '<div class="sub">' + esc(foot) + "</div>";
+  preview.innerHTML = html;
+}
+document.getElementById("add").onclick = () => { row("", ""); draw(); };
+["title", "sub", "footer", "logo"].forEach(id => {
+  document.getElementById(id).addEventListener("input", draw);
+});
+start.forEach(pair => row(pair[0], pair[1]));
+draw();
+
+document.getElementById("print").onclick = async () => {
+  const btn = document.getElementById("print");
+  const list = items();
+  if (!list.length) {
+    statusEl.className = "status err";
+    statusEl.textContent = "Zet eerst een taak in de lijst.";
+    return;
+  }
+  btn.disabled = true;
+  statusEl.className = "status";
+  statusEl.textContent = "Bezig met printen…";
+  try {
+    const res = await fetch("/print", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ip: document.getElementById("ip").value.trim(),
+        title: document.getElementById("title").value.trim(),
+        subtitle: document.getElementById("sub").value.trim(),
+        footer: document.getElementById("footer").value.trim(),
+        logo: Number(document.getElementById("logo").value || 0),
+        items: list
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Printen mislukt");
+    statusEl.className = "status ok";
+    statusEl.textContent = "Bon is verstuurd naar " + data.ip;
+  } catch (err) {
+    statusEl.className = "status err";
+    statusEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
